@@ -23,14 +23,14 @@ This project uses [uv](https://github.com/astral-sh/uv) for fast Python dependen
     You can run the scripts directly using `uv`. The tool will automatically handle virtual environments and dependencies.
 
     ```bash
+    # Run ARIMA Global Optimization Analysis
+    uv run arima.py
+    
     # Run Linear Trend Analysis
     uv run linear.py
 
     # Run Exponential Counterfactual Analysis
     uv run exponential.py
-
-    # Run ARIMA Global Optimization Analysis
-    uv run arima.py
     ```
 
 ---
