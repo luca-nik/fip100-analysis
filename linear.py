@@ -36,7 +36,7 @@ def get_linear_metrics(sub_df, col):
     }
 
 def plot_linear_r2_analysis(df):
-    """Generates the comparison chart with R2 analysis for different windows."""
+    """Generates the comparison chart with R2 and Slope analysis."""
     # Filter for the full analysis window first
     data = df[df['stateTime'] >= START_DATE].copy()
     
@@ -63,24 +63,30 @@ def plot_linear_r2_analysis(df):
         # 3. Plot Lines & Add Stats to Legend
         # Whole Window (Purple Dotted)
         if fit_whole:
-            label = f"Whole Window (R²={fit_whole['r_squared']:.4f})"
+            slope_pib = fit_whole['slope'] * 1024  # Convert EiB to PiB
+            label = (f"Whole Window\n"
+                     f"R²={fit_whole['r_squared']:.4f}, Slope={fit_whole['slope']:.5f} EiB/d ({slope_pib:.2f} PiB/d)")
             ax.plot(fit_whole['x_dates'], fit_whole['y_fit'], 
                     color='purple', linestyle=':', lw=2, label=label)
-            print(f"[{title}] Whole Window R²: {fit_whole['r_squared']:.5f}")
+            print(f"[{title}] Whole Window R²: {fit_whole['r_squared']:.5f}, Slope: {fit_whole['slope']:.5f}")
 
         # Pre-FIP (Red Dashed)
         if fit_pre:
-            label = f"Pre-FIP (R²={fit_pre['r_squared']:.4f})"
+            slope_pib = fit_pre['slope'] * 1024
+            label = (f"Pre-FIP\n"
+                     f"R²={fit_pre['r_squared']:.4f}, Slope={fit_pre['slope']:.5f} EiB/d ({slope_pib:.2f} PiB/d)")
             ax.plot(fit_pre['x_dates'], fit_pre['y_fit'], 
                     color='#d62728', linestyle='--', lw=2.5, label=label)
-            print(f"[{title}] Pre-FIP R²:      {fit_pre['r_squared']:.5f}")
+            print(f"[{title}] Pre-FIP R²:       {fit_pre['r_squared']:.5f}, Slope: {fit_pre['slope']:.5f}")
 
         # Post-FIP (Green Dashed)
         if fit_post:
-            label = f"Post-FIP (R²={fit_post['r_squared']:.4f})"
+            slope_pib = fit_post['slope'] * 1024
+            label = (f"Post-FIP\n"
+                     f"R²={fit_post['r_squared']:.4f}, Slope={fit_post['slope']:.5f} EiB/d ({slope_pib:.2f} PiB/d)")
             ax.plot(fit_post['x_dates'], fit_post['y_fit'], 
                     color='#2ca02c', linestyle='--', lw=2.5, label=label)
-            print(f"[{title}] Post-FIP R²:     {fit_post['r_squared']:.5f}")
+            print(f"[{title}] Post-FIP R²:      {fit_post['r_squared']:.5f}, Slope: {fit_post['slope']:.5f}")
 
         # Formatting
         ax.axvline(EVENT_DATE, color='blue', lw=1.5, label='FIP-100 Live')
@@ -90,7 +96,7 @@ def plot_linear_r2_analysis(df):
         ax.grid(True, alpha=0.3)
     
     plt.tight_layout()
-    filename = "linear_r2_analysis.png"
+    filename = "linear_analysis.png"
     plt.savefig(filename, dpi=DPI)
     print(f"Saved {filename}")
     plt.close()

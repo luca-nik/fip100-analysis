@@ -18,10 +18,10 @@ DPI = 300
 # Windows to analyze: (Start Date, Label, Color)
 # Note: The 'start_date' here is the start of the TRAINING window.
 WINDOWS = [
-    (pd.to_datetime('2023-04-14'), '2 Years Term (from Apr 2023)', "#0876c4"), 
+    (pd.to_datetime('2023-04-14'), '2 Years Term (from Apr 2023)', "#f86ae0"), 
     (pd.to_datetime('2023-10-14'), '1.5 Year Term (from Oct 2023)', '#2ca02c'), # Green
-    (pd.to_datetime('2024-04-14'), 'Medium Prior (from Apr 2024)', '#ff7f0e'), # Orange
-    (pd.to_datetime('2024-10-14'), 'Short Term (from Oct 2024)', '#d62728')   # Red
+    (pd.to_datetime('2024-04-14'), '1 Year Term (from Apr 2024)', '#ff7f0e'), # Orange
+    (pd.to_datetime('2024-10-14'), '6 Months Term (from Oct 2024)', '#d62728')   # Red
 ]
 
 # --- Mathematical Functions ---
@@ -165,7 +165,7 @@ def plot_combined_analysis(df):
     ax2.legend(handles=handles2, loc='lower left', fontsize=11, framealpha=0.95)
     
     plt.tight_layout()
-    filename = 'combined_lag_analysis_backcast_viz_v3.png'
+    filename = 'exponential_analysis.png'
     plt.savefig(filename, dpi=DPI)
     print(f"Saved {filename}")
 
