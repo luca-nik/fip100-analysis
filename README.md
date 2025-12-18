@@ -38,7 +38,7 @@ This project uses [uv](https://github.com/astral-sh/uv) for fast Python dependen
 
 This module fits linear regression models to **Raw Byte Power (RBP)** and **Quality Adjusted Power (QAP)** to detect changes in the *speed* of network growth or decline.
 
-**Output:** `linear_r2_analysis_with_slope.png`
+**Output:** `linear_analysis.png`
 
 **How to Interpret:**
 * **The Slopes:** The legend displays the slope in **PiB/day**.
@@ -51,7 +51,7 @@ This module fits linear regression models to **Raw Byte Power (RBP)** and **Qual
 
 This module tests whether the network experienced a "structural break" by fitting exponential decay models to historical data and projecting them forward. It uses multiple training windows (Long, Medium, Short term) to check for robustness.
 
-**Output:** `combined_lag_analysis_4models.png`
+**Output:** `exponential_analysis.png`
 
 **How to Interpret:**
 
