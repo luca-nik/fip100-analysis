@@ -87,4 +87,4 @@ This module performs a rigorous **Global Grid Search** to find the optimal **ARI
     * *Interpretation:* This is the "zone of expected behavior." As long as reality stays inside this tunnel, statistically speaking, nothing "new" has happened.
 * **Blue Line (Actual Reality):**
     * **No Shock:** If the Blue line tracks the Red dashed line and stays **inside** the pink zone, it provides strong statistical evidence that FIP-100 had **no immediate impact** (the decline is driven by legacy momentum).
-    * **Shock:** If the Blue line breaks **outside** the pink zone (diverges), it indicates a true structural break caused by the event.
+    * **Shock:** If the Blue line diverges and remains **outside** the pink zone, it indicates a true structural break caused by the event.
