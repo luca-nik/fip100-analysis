@@ -3,7 +3,7 @@
 **Author:** Luca – CryptoEconLab  
 **Date:** Dec 2025
 
-This repository contains Python analytical tools designed to assess the impact of FIP-100 on the Filecoin network's storage capacity. It provides statistical frameworks to compare network behavior before and after the protocol change using both linear and exponential models.
+This repository contains Python analytical tools designed to assess the impact of FIP-100 on the Filecoin network's storage capacity. It provides statistical frameworks to compare network behavior before and after the protocol change using linear, exponential, and ARIMA models.
 
 ## 🛠️ Prerequisites & Installation
 
@@ -28,6 +28,9 @@ This project uses [uv](https://github.com/astral-sh/uv) for fast Python dependen
 
     # Run Exponential Counterfactual Analysis
     uv run exponential.py
+
+    # Run ARIMA Global Optimization Analysis
+    uv run arima.py
     ```
 
 ---
@@ -38,7 +41,7 @@ This project uses [uv](https://github.com/astral-sh/uv) for fast Python dependen
 
 This module fits linear regression models to **Raw Byte Power (RBP)** and **Quality Adjusted Power (QAP)** to detect changes in the *speed* of network growth or decline.
 
-**Output:** `linear_analysis.png`
+**Output:** `linear_r2_analysis_with_slope.png`
 
 **How to Interpret:**
 * **The Slopes:** The legend displays the slope in **PiB/day**.
@@ -49,9 +52,9 @@ This module fits linear regression models to **Raw Byte Power (RBP)** and **Qual
 
 ### 2. Exponential Counterfactual Analysis (`exponential.py`)
 
-This module tests whether the network experienced a "structural break" by fitting exponential decay models to historical data and projecting them forward. It uses multiple training windows (2 years, 1.5 years, 1 year and 6 months) to check for robustness.
+This module tests whether the network experienced a "structural break" by fitting exponential decay models to historical data and projecting them forward. It uses multiple training windows (2 years, 1.5 years, 1 year, and 6 months) to check for robustness.
 
-**Output:** `exponential_analysis.png`
+**Output:** `combined_lag_analysis_4models.png`
 
 **How to Interpret:**
 
@@ -70,3 +73,18 @@ This module tests whether the network experienced a "structural break" by fittin
 * **The Lag:** Look at *when* the line leaves the shaded zone.
     * **Immediate Break:** If the line drops out and stays out of the zone immediately at the vertical line, the FIP likely caused an immediate shock.
     * **Delayed Break:** If the line stays within the zone for months before dropping, the cause is not directly imputable to FIP-100.
+
+### 3. ARIMA Counterfactual Analysis (`arima.py`)
+
+This module performs a rigorous **Global Grid Search** to find the optimal **ARIMA (Auto-Regressive Integrated Moving Average)** model for the pre-FIP data. Unlike simple curves, ARIMA captures complex dynamics like momentum ($p$), trend ($d$), and shock memory ($q$).
+
+**Output:** `arima_raw_byte_power_rbp_global_opt.png`
+
+**How to Interpret:**
+
+* **Red Dashed Line (The Counterfactual):** This represents the **statistically predicted path** of the network if FIP-100 had never happened, based entirely on pre-existing momentum and volatility.
+* **Pink Shaded Area (Confidence Interval):** The **95% Confidence Interval**.
+    * *Interpretation:* This is the "zone of expected behavior." As long as reality stays inside this tunnel, statistically speaking, nothing "new" has happened.
+* **Blue Line (Actual Reality):**
+    * **No Shock:** If the Blue line tracks the Red dashed line and stays **inside** the pink zone, it provides strong statistical evidence that FIP-100 had **no immediate impact** (the decline is driven by legacy momentum).
+    * **Shock:** If the Blue line breaks **outside** the pink zone (diverges), it indicates a true structural break caused by the event.

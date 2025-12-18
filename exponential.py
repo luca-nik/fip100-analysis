@@ -12,7 +12,7 @@ EVENT_DATE = pd.to_datetime('2025-04-14')  # FIP-100 Live Date
 
 # View window: 1.5 years prior to FIP-100 (approx Oct 2023). 
 # We set it slightly earlier (Aug 2023) to see the backcast clearly.
-VIEW_START_DATE = pd.to_datetime('2022-08-01') 
+VIEW_START_DATE = pd.to_datetime('2023-04-14') 
 DPI = 300
 
 # Windows to analyze: (Start Date, Label, Color)
