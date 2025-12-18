@@ -1,69 +1,72 @@
-# FIP-100 Impact Analysis: Physical vs. Consensus Power Trends
+# FIP-100 Impact Analysis Tools
 
-**Date:** 12 Dec 2025
-**Author:** Luca – CryptoEconLab
+**Author:** Luca – CryptoEconLab  
+**Date:** Dec 2025
 
-## 1. Executive Summary
+This repository contains Python analytical tools designed to assess the impact of FIP-100 on the Filecoin network's storage capacity. It provides statistical frameworks to compare network behavior before and after the protocol change using both linear and exponential models.
 
-**Conclusion:** The available data suggests that FIP-100 is not the primary accelerator of the storage hardware decline.
+## 🛠️ Prerequisites & Installation
 
-Our analysis highlights diverging trends between physical hardware and consensus power since the proposal's activation (April 14, 2025):
-* **Physical Hardware (RBP):** The rate of decline has **slowed down** (decelerated).
-* **Consensus Power (QAP):** The rate of decline has **accelerated**.
-* **Implication:** This divergence suggests that the decline in network power is driven by **FIL+ lifecycle dynamics** (e.g., expiration of 10x sectors or reduced FIL+ adoption) rather than a mass unplugging of hardware due to the FIP-100 fee structure.
+This project uses [uv](https://github.com/astral-sh/uv) for fast Python dependency management.
 
-## 2. Visual Evidence
-
-**Figure 1: RBP vs QAP Trends**
-* **Top Panel (RBP):** The Green trend line (Post-FIP) is flatter than the Red line (Pre-FIP), indicating a slower rate of loss for physical hardware.
-* **Bottom Panel (QAP):** The Orange trend line is steeper, reflecting a faster rate of loss for consensus power.
-
-![RBP vs QAP Comparison](rbp_qap_comparison.png)
-
-**Figure 2: Volatility Analysis**
-* The overlap of the two curves demonstrates that the distribution of daily changes (volatility) has remained consistent over time, indicating no destabilization of network operations.*
-
-![Variance Study](variance_study.png)
-
-## 3. Key Findings
-
-### A. RBP Decline Has Slowed (Retention Improved)
-* **Pre-FIP Trend:** -6.1 PiB / day
-* **Post-FIP Trend:** -4.8 PiB / day
-* **Observation:** The daily loss of physical storage is **~21% lower** in the period following FIP-100 activation compared to the period immediately prior.
-
-### B. QAP Decline Has Accelerated (Loss Worsened)
-* **Pre-FIP Trend:** -3.6 PiB / day
-* **Post-FIP Trend:** -5.0 PiB / day
-* **Observation:** The daily loss of QAP has increased by **~38%**, diverging from the physical hardware trend.
-
-### C. Stability Check (Variance)
-* **Pre-FIP Std Dev:** 0.030
-* **Post-FIP Std Dev:** 0.032
-* **Observation:** The standard deviation is effectively unchanged. This indicates that the day-to-day behavior of storage providers has remained consistent, with no evidence of erratic mass-exit events induced by the protocol change.
-
-## 4. Methodology & Reproducibility
-
-To ensure transparency and avoid narrative bias, this analysis relies on standard statistical methods applied to raw network data.
-
-**1. Data Source**
-We utilized daily snapshots of **Raw Byte Power (RBP)** and **Quality Adjusted Power (QAP)** from the Filecoin Mainnet, sourced via Starboard Ventures.
-* **Analysis Window:** October 2024 – December 2025.
-* **Event Boundary:** April 14, 2025 (FIP-100 activation).
-
-**2. Trend Analysis (Slopes)**
-We calculated the **linear regression slope** for the periods before and after the event. The slope represents the average speed at which power is leaving the network. Comparing slopes allows us to objectively determine if the "bleeding" is getting faster (acceleration) or slower (deceleration).
-
-**3. Volatility Analysis (Variance)**
-We computed the **Standard Deviation** of the daily net change in Raw Byte Power. Stable volatility (as observed here) confirms that FIP-100 did not trigger a chaotic reaction from storage providers.
-
-## 5. How to Run This Code
-
-Prerequisites: Python 3.10+ and [uv](https://github.com/astral-sh/uv).
-
-1.  Clone the repo.
-2.  Ensure `Network_Storage_Capacity.csv` is in the root.
-3.  Run:
+1.  **Clone the repository:**
     ```bash
-    uv run main.py
+    git clone <your-repo-url>
+    cd fip100-analysis
     ```
+
+2.  **Ensure Data Availability:**
+    Place your dataset file named `Network_Storage_Capacity.csv` in the root directory.
+    * *Required Columns:* `stateTime` (date), `Network RB Power` (RBP), `Network QA Power` (QAP).
+
+3.  **Run the Tools:**
+    You can run the scripts directly using `uv`. The tool will automatically handle virtual environments and dependencies.
+
+    ```bash
+    # Run Linear Trend Analysis
+    uv run linear.py
+
+    # Run Exponential Counterfactual Analysis
+    uv run exponential.py
+    ```
+
+---
+
+## 📊 Analysis Modules & Interpretation
+
+### 1. Linear Trend Analysis (`linear.py`)
+
+This module fits linear regression models to **Raw Byte Power (RBP)** and **Quality Adjusted Power (QAP)** to detect changes in the *speed* of network growth or decline.
+
+**Output:** `linear_r2_analysis_with_slope.png`
+
+**How to Interpret:**
+* **The Slopes:** The legend displays the slope in **PiB/day**.
+    * Compare the **Pre-FIP Slope** (Red) vs. **Post-FIP Slope** (Green).
+    * **Deceleration:** If the Green slope is *smaller* (closer to 0) than the Red slope, the decline has slowed down.
+    * **Acceleration:** If the Green slope is *larger* (more negative) than the Red slope, the decline has accelerated.
+* **The Vertical Line:** Marks the FIP-100 activation date. An immediate "kink" in the line at this point suggests an immediate reaction to the policy change.
+
+### 2. Exponential Counterfactual Analysis (`exponential.py`)
+
+This module tests whether the network experienced a "structural break" by fitting exponential decay models to historical data and projecting them forward. It uses multiple training windows (Long, Medium, Short term) to check for robustness.
+
+**Output:** `combined_lag_analysis_4models.png`
+
+**How to Interpret:**
+
+#### **Part 1: Projections vs Actuals (Top Chart)**
+* **Dotted Lines (Backcast):** These show how the model *would* have predicted the past.
+    * *Interpretation:* If the dotted line aligns well with the black line (Historical RBP), the model is valid. If it diverges wildly, the model is likely overfitted to a specific period.
+* **Dashed Lines (Fit & Forecast):** The projected "baseline" trend if no event occurred.
+* **Blue Line:** The **Actual** post-FIP data.
+    * *Interpretation:* Compare the Blue line to the Dashed lines. Is the network performing better or worse than the natural decay trend?
+
+#### **Part 2: The Lag Test / Residuals (Bottom Chart)**
+* **The Zero Line:** Represents perfect adherence to the projection.
+* **The Curves:** Show the percentage deviation (Residuals) of the actual data from the model.
+* **Shaded Area (Noise Zone):** Represents the **95% Confidence Interval** ($2\sigma$) based on pre-FIP volatility.
+    * *Interpretation:* A deviation is only statistically significant if it exits this shaded zone.
+* **The Lag:** Look at *when* the line leaves the shaded zone.
+    * **Immediate Break:** If the line drops out of the zone immediately at the vertical line, the FIP likely caused an immediate shock.
+    * **Delayed Break:** If the line stays within the zone for months before dropping, the cause is likely a lagging effect or a separate external macro factor.
