@@ -37,7 +37,23 @@ This project uses [uv](https://github.com/astral-sh/uv) for fast Python dependen
 
 ## 📊 Analysis Modules & Interpretation
 
-### 1. Linear Trend Analysis (`linear.py`)
+### 1. ARIMA Counterfactual Analysis (`main.py`)
+
+This module performs a rigorous **Global Grid Search** to find the optimal **ARIMA (Auto-Regressive Integrated Moving Average)** model for the pre-FIP data. Unlike simple curves, ARIMA captures complex dynamics like momentum ($p$), trend ($d$), and shock memory ($q$).
+
+**Output:** `arima_raw_byte_power_rbp_global_opt.png`
+
+**How to Interpret:**
+
+* **Red Dashed Line (The Counterfactual):** This represents the **statistically predicted path** of the network if FIP-100 had never happened, based entirely on pre-existing momentum and volatility.
+* **Pink Shaded Area (Confidence Interval):** The **95% Confidence Interval**.
+    * *Interpretation:* This is the "zone of expected behavior." As long as reality stays inside this tunnel, statistically speaking, nothing "new" has happened.
+* **Blue Line (Actual Reality):**
+    * **No Shock:** If the Blue line tracks the Red dashed line and stays **inside** the pink zone, it provides strong statistical evidence that FIP-100 had **no immediate impact** (the decline is driven by legacy momentum).
+    * **Shock:** If the Blue line diverges and remains **outside** the pink zone, it indicates a true structural break caused by the event.
+
+
+### 2. Linear Trend Analysis (`linear.py`)
 
 This module fits linear regression models to **Raw Byte Power (RBP)** and **Quality Adjusted Power (QAP)** to detect changes in the *speed* of network growth or decline.
 
@@ -50,7 +66,7 @@ This module fits linear regression models to **Raw Byte Power (RBP)** and **Qual
     * **Acceleration:** If the Green slope is *larger* (more negative) than the Red slope, the decline has accelerated.
 * **The Vertical Line:** Marks the FIP-100 activation date. An immediate "kink" in the line at this point suggests an immediate reaction to the policy change.
 
-### 2. Exponential Counterfactual Analysis (`exponential.py`)
+### 3. Exponential Counterfactual Analysis (`exponential.py`)
 
 This module tests whether the network experienced a "structural break" by fitting exponential decay models to historical data and projecting them forward. It uses multiple training windows (2 years, 1.5 years, 1 year, and 6 months) to check for robustness.
 
@@ -74,17 +90,3 @@ This module tests whether the network experienced a "structural break" by fittin
     * **Immediate Break:** If the line drops out and stays out of the zone immediately at the vertical line, the FIP likely caused an immediate shock.
     * **Delayed Break:** If the line stays within the zone for months before dropping, the cause is not directly imputable to FIP-100.
 
-### 3. ARIMA Counterfactual Analysis (`arima.py`)
-
-This module performs a rigorous **Global Grid Search** to find the optimal **ARIMA (Auto-Regressive Integrated Moving Average)** model for the pre-FIP data. Unlike simple curves, ARIMA captures complex dynamics like momentum ($p$), trend ($d$), and shock memory ($q$).
-
-**Output:** `arima_raw_byte_power_rbp_global_opt.png`
-
-**How to Interpret:**
-
-* **Red Dashed Line (The Counterfactual):** This represents the **statistically predicted path** of the network if FIP-100 had never happened, based entirely on pre-existing momentum and volatility.
-* **Pink Shaded Area (Confidence Interval):** The **95% Confidence Interval**.
-    * *Interpretation:* This is the "zone of expected behavior." As long as reality stays inside this tunnel, statistically speaking, nothing "new" has happened.
-* **Blue Line (Actual Reality):**
-    * **No Shock:** If the Blue line tracks the Red dashed line and stays **inside** the pink zone, it provides strong statistical evidence that FIP-100 had **no immediate impact** (the decline is driven by legacy momentum).
-    * **Shock:** If the Blue line diverges and remains **outside** the pink zone, it indicates a true structural break caused by the event.
