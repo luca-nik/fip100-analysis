@@ -49,7 +49,7 @@ This module fits linear regression models to **Raw Byte Power (RBP)** and **Qual
 
 ### 2. Exponential Counterfactual Analysis (`exponential.py`)
 
-This module tests whether the network experienced a "structural break" by fitting exponential decay models to historical data and projecting them forward. It uses multiple training windows (Long, Medium, Short term) to check for robustness.
+This module tests whether the network experienced a "structural break" by fitting exponential decay models to historical data and projecting them forward. It uses multiple training windows (2 years, 1.5 years, 1 year and 6 months) to check for robustness.
 
 **Output:** `exponential_analysis.png`
 
@@ -57,8 +57,8 @@ This module tests whether the network experienced a "structural break" by fittin
 
 #### **Part 1: Projections vs Actuals (Top Chart)**
 * **Dotted Lines (Backcast):** These show how the model *would* have predicted the past.
-    * *Interpretation:* If the dotted line aligns well with the black line (Historical RBP), the model is valid. If it diverges wildly, the model is likely overfitted to a specific period.
-* **Dashed Lines (Fit & Forecast):** The projected "baseline" trend if no event occurred.
+    * *Interpretation:* If the dotted line aligns well with the grey line (Historical RBP), the model is valid. If it diverges wildly, the model is likely overfitted to a specific period.
+* **Dashed Lines (Fit & Forecast):** The projected "baseline" trend.
 * **Blue Line:** The **Actual** post-FIP data.
     * *Interpretation:* Compare the Blue line to the Dashed lines. Is the network performing better or worse than the natural decay trend?
 
@@ -68,5 +68,5 @@ This module tests whether the network experienced a "structural break" by fittin
 * **Shaded Area (Noise Zone):** Represents the **95% Confidence Interval** ($2\sigma$) based on pre-FIP volatility.
     * *Interpretation:* A deviation is only statistically significant if it exits this shaded zone.
 * **The Lag:** Look at *when* the line leaves the shaded zone.
-    * **Immediate Break:** If the line drops out of the zone immediately at the vertical line, the FIP likely caused an immediate shock.
-    * **Delayed Break:** If the line stays within the zone for months before dropping, the cause is likely a lagging effect or a separate external macro factor.
+    * **Immediate Break:** If the line drops out and stays out of the zone immediately at the vertical line, the FIP likely caused an immediate shock.
+    * **Delayed Break:** If the line stays within the zone for months before dropping, the cause is not directly imputable to FIP-100.
