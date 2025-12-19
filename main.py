@@ -1,5 +1,6 @@
 import warnings
 from statsmodels.tools.sm_exceptions import ConvergenceWarning
+from statsmodels.stats.diagnostic import acorr_ljungbox
 
 import pandas as pd
 import numpy as np
@@ -9,10 +10,53 @@ from pathlib import Path
 from statsmodels.tsa.arima.model import ARIMA
 import itertools
 
+
+from statsmodels.graphics.tsaplots import plot_acf
+from statsmodels.graphics.gofplots import qqplot
+import scipy.stats as stats
+
+def plot_diagnostics(res, name):
+    """
+    Generates a 4-panel diagnostic plot for the ARIMA residuals.
+    """
+    # Extract standardized residuals
+    resid = res.resid
+    
+    # Create figure
+    fig, axes = plt.subplots(2, 2, figsize=(12, 10))
+    fig.suptitle(f"ARIMA Diagnostics: {name}\nOrder={res.model.order}, AIC={res.aic:.2f}", fontsize=16)
+
+    # 1. Residuals over Time
+    axes[0, 0].plot(resid, color='blue', alpha=0.7)
+    axes[0, 0].axhline(0, color='black', linestyle='--', lw=1)
+    axes[0, 0].set_title("Standardized Residuals (Time)")
+    axes[0, 0].set_ylabel("Error")
+
+    # 2. Histogram + KDE vs Normal
+    axes[0, 1].hist(resid, density=True, bins=30, alpha=0.5, color='gray', label='Residuals')
+    kde = stats.gaussian_kde(resid)
+    x_range = np.linspace(resid.min(), resid.max(), 100)
+    axes[0, 1].plot(x_range, kde(x_range), color='blue', label='KDE')
+    axes[0, 1].plot(x_range, stats.norm.pdf(x_range, resid.mean(), resid.std()), color='red', linestyle='--', label='N(0,1)')
+    axes[0, 1].set_title("Histogram vs. Normal Distribution")
+    axes[0, 1].legend()
+
+    # 3. Q-Q Plot (Normality)
+    qqplot(resid, line='s', ax=axes[1, 0])
+    axes[1, 0].set_title("Normal Q-Q Plot")
+
+    # 4. ACF of Residuals (Autocorrelation)
+    plot_acf(resid, ax=axes[1, 1], lags=40, title="ACF of Residuals")
+
+    plt.tight_layout()
+    plt.savefig(f"diagnostics_{name.replace(' ', '_').lower()}.png", dpi=300)
+    plt.close()
+    print(f"[{name}] Diagnostics saved.")
+
 # --- Configuration ---
 DATA_FILE = "Network_Storage_Capacity.csv"
 EVENT_DATE = pd.to_datetime("2025-04-14")     # FIP-100 Live Date
-VIEW_START_DATE = pd.to_datetime("2023-04-14")
+VIEW_START_DATE = pd.to_datetime("2023-10-14")
 DPI = 300
 OUTPUT_PREFIX = "arima_global_search"
 
@@ -87,58 +131,83 @@ def fit_arima_with_convergence(y_train: pd.Series, order: tuple[int, int, int]):
 
 def find_global_best_model(y_train: pd.Series, name: str):
     """
-    Perform a grid search over P_RANGE, D_RANGE, Q_RANGE to find the global best AIC.
+    Grid search that prioritizes models with 'clean' residuals (White Noise).
+    
+    Selection Logic:
+    1. Primary Goal: Find model with lowest AIC where Ljung-Box p-value > 0.05 (Valid).
+    2. Fallback: If NO model passes Ljung-Box, take absolute lowest AIC (and warn user).
     """
     y_train = y_train.dropna().astype(float)
-    
-    # Generate all combinations
     candidates = list(itertools.product(P_RANGE, D_RANGE, Q_RANGE))
     total_candidates = len(candidates)
     
-    print(f"\n[{name}] Starting Global Grid Search over {total_candidates} ARIMA models...")
-    print(f"   Ranges -> p: {P_RANGE}, d: {D_RANGE}, q: {Q_RANGE}")
+    print(f"\n[{name}] Starting Smart Grid Search over {total_candidates} models...")
+
+    # -- Tracking "Clean" Models (Passes Ljung-Box) --
+    best_clean_aic = np.inf
+    best_clean_order = None
+    best_clean_res = None
     
-    best_aic = np.inf
-    best_order = None
-    best_res = None
-    best_converged = False
+    # -- Tracking "Raw" Models (Absolute best AIC, even if residuals are bad) --
+    best_raw_aic = np.inf
+    best_raw_order = None
+    best_raw_res = None
     
-    # Track metrics for reporting
     converged_count = 0
-    failed_count = 0
+    clean_count = 0
     
     for i, order in enumerate(candidates):
-        # Optional progress indicator for long searches
         if i % 20 == 0:
-            print(f"   Searching... {i}/{total_candidates} (Best AIC so far: {best_aic:.2f})", end='\r')
+            print(f"   Searching... {i}/{total_candidates} (Best Valid AIC: {best_clean_aic if best_clean_aic != np.inf else 'None'})", end='\r')
             
         res, aic, conv, err = fit_arima_with_convergence(y_train, order)
         
-        if err:
-            failed_count += 1
+        if not conv or err:
             continue
             
-        if conv:
-            converged_count += 1
-            # Prefer converged models with lower AIC
-            if aic < best_aic:
-                best_aic = aic
-                best_order = order
-                best_res = res
-                best_converged = True
-        else:
-            # If we haven't found any converged model yet, we might track the best non-converged one as fallback
-            # But strictly speaking, we want the best *converged* one.
-            pass
+        converged_count += 1
+        
+        # --- DIAGNOSTIC CHECK: Ljung-Box Test ---
+        # We test at lag 10 (standard for daily data) to see if there is auto-correlation left.
+        # H0: Residuals are random (Good). p-value < 0.05 rejects H0 (Bad).
+        try:
+            lb_df = acorr_ljungbox(res.resid, lags=[10], return_df=True)
+            p_value = lb_df['lb_pvalue'].iloc[0]
+            is_clean = p_value > 0.05
+        except:
+            is_clean = False
+            
+        # 1. Update Raw Best (Fallback)
+        if aic < best_raw_aic:
+            best_raw_aic = aic
+            best_raw_order = order
+            best_raw_res = res
+            
+        # 2. Update Clean Best (Primary Target)
+        if is_clean:
+            clean_count += 1
+            if aic < best_clean_aic:
+                best_clean_aic = aic
+                best_clean_order = order
+                best_clean_res = res
 
     print(f"\n[{name}] Search Complete.")
-    print(f"   Converged: {converged_count}, Failed/Non-conv: {total_candidates - converged_count}")
-    
-    if best_res is None:
-        raise RuntimeError(f"[{name}] No model converged during grid search.")
+    print(f"   Converged: {converged_count}, Passed Ljung-Box: {clean_count}")
+
+    # --- DECISION LOGIC ---
+    if best_clean_res is not None:
+        print(f"[{name}] ✅ Selected Valid Model: {best_clean_order} (AIC={best_clean_aic:.2f})")
+        print(f"   (Note: Absolute lowest AIC was {best_raw_order} at {best_raw_aic:.2f})")
+        return best_clean_res, best_clean_order, best_clean_aic, True
         
-    print(f"[{name}] GLOBAL BEST Selected: ARIMA{best_order} with AIC={best_aic:.2f} ✅")
-    return best_res, best_order, best_aic, best_converged
+    elif best_raw_res is not None:
+        print(f"[{name}] ⚠️ WARNING: No model passed diagnostic tests.")
+        print(f"   Falling back to lowest AIC model: {best_raw_order} (AIC={best_raw_aic:.2f})")
+        print(f"   This model may be overfitting or missing signal.")
+        return best_raw_res, best_raw_order, best_raw_aic, True
+        
+    else:
+        raise RuntimeError(f"[{name}] No model converged.")
 
 
 # -----------------------
@@ -155,6 +224,7 @@ def plot_arima_forecast(series: pd.Series, name: str):
 
     # Find Global Best Model
     res, chosen_order, aic, converged = find_global_best_model(train, name)
+    #plot_diagnostics(res, name)
 
     # Forecast post period
     steps = len(post)
