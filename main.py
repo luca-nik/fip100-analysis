@@ -1,3 +1,4 @@
+import argparse
 import warnings
 from statsmodels.tools.sm_exceptions import ConvergenceWarning
 from statsmodels.stats.diagnostic import acorr_ljungbox
@@ -180,7 +181,14 @@ def find_global_best_model(y_train: pd.Series, name: str, use_log: bool):
 # Core Plot
 # -----------------------
 
-def plot_arima_forecast(series: pd.Series, name: str, use_log: bool, out_filename: str):
+def plot_arima_forecast(
+    series: pd.Series,
+    name: str,
+    use_log: bool,
+    out_filename: str,
+    retrain: bool,
+    fixed_order: tuple[int, int, int],
+):
     series_view = series[series.index >= VIEW_START_DATE].copy()
     train = series_view[series_view.index < EVENT_DATE].copy()
     post = series_view[series_view.index >= EVENT_DATE].copy()
@@ -201,7 +209,14 @@ def plot_arima_forecast(series: pd.Series, name: str, use_log: bool, out_filenam
         model_prefix = "ARIMA"
     
     # Find Global Best Model (Fitting on transformed or raw data)
-    res, chosen_order, aic, converged = find_global_best_model(train_data, name, use_log)
+    if retrain:
+        res, chosen_order, aic, converged = find_global_best_model(train_data, name, use_log)
+    else:
+        chosen_order = fixed_order
+        res, aic, converged, err = fit_arima_with_convergence(train_data, chosen_order)
+        if res is None or err:
+            raise RuntimeError(f"[{name}] Fixed ARIMA{chosen_order} failed to fit: {err}")
+        print(f"[{name}] Using fixed model ARIMA{chosen_order} (AIC={aic:.2f})")
 
     # Forecast post period (Output matches training scale)
     steps = len(post)
@@ -237,6 +252,10 @@ def plot_arima_forecast(series: pd.Series, name: str, use_log: bool, out_filenam
     ax.axvline(EVENT_DATE, color="black", lw=1.5)
     ax.text(EVENT_DATE, ax.get_ylim()[1]*0.98, " FIP-100 Activation",
             ha="right", va="top", fontsize=11, fontweight="bold", rotation=90)
+    grace_end = EVENT_DATE + pd.Timedelta(days=90)
+    ax.axvline(grace_end, color="black", lw=1.2)
+    ax.text(grace_end, ax.get_ylim()[1]*0.98, " End of Grace Period",
+            ha="right", va="top", fontsize=11, fontweight="bold", rotation=90)
 
     ax.set_title(f"Global Optimum {model_prefix} Forecast vs Actual — {name}\n(Best Order={chosen_order}, AIC={aic:.2f} {scale_label})",
                  fontsize=15, fontweight="bold")
@@ -253,23 +272,79 @@ def plot_arima_forecast(series: pd.Series, name: str, use_log: bool, out_filenam
 
 
 def main():
+    parser = argparse.ArgumentParser(description="FIP-100 ARIMA analysis")
+    parser.add_argument(
+        "--retrain",
+        nargs="*",
+        choices=["rbp", "qap", "multiplier", "all"],
+        default=None,
+        help="Retrain via grid search for selected series (rbp, qap, multiplier). "
+             "Use --retrain without values or --retrain all to retrain all.",
+    )
+    args = parser.parse_args()
+
+    if args.retrain is None:
+        print("Using saved ARIMA orders. To retrain, run with --retrain.")
+    else:
+        print(f"Retraining series: {', '.join(args.retrain) if args.retrain else 'all'}")
+
     try:
         df = read_input_csv()
     except FileNotFoundError as e:
         print(e)
         return
 
+    # 1. Prepare Base Series
     rbp = make_daily_series(df, "Network RB Power")
     qap = make_daily_series(df, "Network QA Power")
 
-    # 1. RBP with Log Transform
-    plot_arima_forecast(rbp, "Raw Byte Power (RBP)", use_log=True, out_filename="arima_RBP_analysis.png")
+    # 2. Calculate the Multiplier Ratio
+    # Formula: Multiplier = Total QAP / Total RBP
+    # This tells us the average "Voting Power" per byte of physical storage.
+    multiplier = qap / rbp
+    multiplier.name = "Network Multiplier"
+
+    # --- PLOTTING ---
+
+    # Plot 1: RBP (Log Scale - Exponential Decay)
+    retrain_selection = set(args.retrain or [])
+    if "all" in retrain_selection:
+        retrain_selection = {"rbp", "qap", "multiplier"}
+    elif not retrain_selection and args.retrain is not None:
+        retrain_selection = {"rbp", "qap", "multiplier"}
+
+    plot_arima_forecast(
+        rbp,
+        "Raw Byte Power (RBP)",
+        use_log=True,
+        out_filename="arima_RBP_analysis.png",
+        retrain="rbp" in retrain_selection,
+        fixed_order=(1, 1, 5),
+    )
     
-    # 2. QAP without Log Transform (Raw)
-    plot_arima_forecast(qap, "Quality Adjusted Power (QAP)", use_log=False, out_filename="arima_QAP_analysis.png")
+    # Plot 2: QAP (Raw Scale - Volatile)
+    plot_arima_forecast(
+        qap,
+        "Quality Adjusted Power (QAP)",
+        use_log=False,
+        out_filename="arima_QAP_analysis.png",
+        retrain="qap" in retrain_selection,
+        fixed_order=(1, 1, 3),
+    )
+
+    # Plot 3: Multiplier Ratio (The new metric)
+    # We use raw scale because the ratio is typically linear (between 1.0 and 10.0)
+    # We use a simple (1,1,1) baseline order, but YOU SHOULD RETRAIN for best results.
+    plot_arima_forecast(
+        multiplier,
+        "Multiplier Ratio (QAP / RBP)",
+        use_log=False,
+        out_filename="arima_Multiplier_analysis.png",
+        retrain="multiplier" in retrain_selection,
+        fixed_order=(3, 1, 6),
+    )
 
     print("\nGlobal ARIMA search and analysis complete.")
-
 
 if __name__ == "__main__":
     main()
